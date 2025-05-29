@@ -1,7 +1,32 @@
-#!/bin/sh
+#!/bin/bash
 
 exec < /dev/console >/dev/console 2>&1
-type getarg > /dev/null 2>&1 || . /lib/dracut-lib.sh
+
+if [ -e /lib/dracut-lib.sh ]; then
+	type getarg > /dev/null 2>&1 || . /lib/dracut-lib.sh
+else
+	die() {
+		{
+			echo "<24>FATAL: $*"
+			echo "<24>Refusing to continue"
+		} > /dev/kmsg
+		systemctl --no-block --force halt
+		exit 1
+	}
+	getargbool() {
+		local _i _cmdline=() _value="$1" _arg="$2"
+		_cmdline=($(< /proc/cmdline))
+		for _i in "${_cmdline[@]}"; do
+			[ "${_i%%=*}" == "$_arg" ] && _value="${_i##*=}"
+		done
+		if [ -n "$_value" ]; then
+			[ "$_value" = "0" ] && return 1
+			[ "$_value" = "no" ] && return 1
+			[ "$_value" = "off" ] && return 1
+		fi
+		return 0
+	}
+fi
 
 # get systemd credential
 # https://systemd.io/CREDENTIALS/
@@ -25,6 +50,9 @@ get_credentials()
 
 encrypt=
 if get_credential encrypt disk-encryption-tool-dracut.encrypt && [ "$encrypt" = "no" ]; then
+	exit 0
+fi
+if get_credential encrypt disk-encryption-tool-initrd.encrypt && [ "$encrypt" = "no" ]; then
 	exit 0
 fi
 
@@ -55,17 +83,18 @@ if [ "$inhibitor" != $'\e' ]; then
 	root_device="$(findmnt -nvo SOURCE /sysroot)"
 	root_cr_name="cr_root"
 	root_options="auto"
-	if get_credentials partitions disk-encryption-tool-dracut.partitions; then
+	if get_credentials partitions disk-encryption-tool-dracut.partitions \
+		|| get_credentials partitions disk-encryption-tool-initrd.partitions; then
 		for line in "${partitions[@]}"; do
 			read -r cr_name device options <<<"$line"
 			[ "$device" = "$root_device" ] && root_cr_name="$cr_name" && root_options="$options" && continue
 			echo "Encrypt $device"
-			/usr/bin/disk-encryption-tool --keyring cryptenroll --options "${options:-auto}" --root /sysroot "$device" "$cr_name" || die "Encryption failed"
+			/usr/sbin/disk-encryption-tool --keyring cryptenroll --options "${options:-auto}" --root /sysroot "$device" "$cr_name" || die "Encryption failed"
 		done
 	fi
 	if [ "$root_options" != "skip" ]; then
 		echo "Encrypt /sysroot"
-		/usr/bin/disk-encryption-tool --keyring cryptenroll --options "${root_options:-auto}" "/sysroot" "$root_cr_name" || die "Encryption failed"
+		/usr/sbin/disk-encryption-tool --keyring cryptenroll --options "${root_options:-auto}" "/sysroot" "$root_cr_name" || die "Encryption failed"
 	fi
 fi
 # turn messages on again

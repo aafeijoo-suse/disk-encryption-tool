@@ -1,7 +1,7 @@
 #
 # spec file for package disk-encryption-tool
 #
-# Copyright (c) 2024 SUSE LLC
+# Copyright (c) 2025 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -23,8 +23,16 @@ Summary:        Tool to reencrypt kiwi raw images
 License:        MIT
 URL:            https://github.com/openSUSE/disk-encryption-tool
 Source:         disk-encryption-tool-%{version}.tar
+Requires:       bash
+Requires:       btrfsprogs
+Requires:       coreutils
 Requires:       cryptsetup
 Requires:       keyutils
+Requires:       sed
+Requires:       systemd
+Requires:       udev
+Requires:       util-linux
+Requires:       util-linux-systemd
 ExclusiveArch:  aarch64 x86_64
 BuildArch:      noarch
 
@@ -35,24 +43,63 @@ third partition is the root fs using btrfs.
 After encrypting the disk, the fs is mounted and a new initrd
 created as well as the grub2 config adjusted.
 
+%package dracut
+Summary:        dracut module to reencrypt kiwi raw images
+Requires:       %{name} = %{version}-%{release}
+Requires:       dracut
+
+%description dracut
+dracut module to reencrypt kiwi raw images.
+
+%package mkosi-initrd
+Summary:        mkosi-initrd configuration to reencrypt kiwi raw images
+Requires:       %{name} = %{version}-%{release}
+Requires:       mkosi-initrd
+
+%description mkosi-initrd
+mkosi-initrd configuration to reencrypt kiwi raw images.
+
 %prep
 %setup -q
 
 %build
 
 %install
-mkdir -p %buildroot/usr/lib/dracut/modules.d/95disk-encryption-tool
-for i in disk-encryption-tool{,-dracut,-dracut.service} module-setup.sh; do
-  cp "$i" %buildroot/usr/lib/dracut/modules.d/95disk-encryption-tool/"$i"
-done
-mkdir -p %buildroot/usr/bin
-ln -s ../lib/dracut/modules.d/95disk-encryption-tool/disk-encryption-tool %buildroot/usr/bin
+# common
+install -D -m 0755 disk-encryption-tool %{buildroot}%{_sbindir}/disk-encryption-tool
+install -D -m 0755 disk-encryption-tool-initrd %{buildroot}%{_libexecdir}/disk-encryption-tool-initrd
+install -D -m 0644 disk-encryption-tool-initrd.service %{buildroot}%{_unitdir}/disk-encryption-tool-initrd.service
+
+# dracut
+install -D -m 0755 module-setup.sh %{buildroot}%{_prefix}/lib/dracut/modules.d/95disk-encryption-tool/module-setup.sh
+
+# mkosi-initrd
+install -D -m 0644 mkosi.conf %{buildroot}%{_prefix}/lib/mkosi-initrd/mkosi.conf.d/95-disk-encryption-tool.conf
+install -D -m 0644 mkosi-extra.conf %{buildroot}%{_prefix}/lib/mkosi-initrd/mkosi.conf.d/95-disk-encryption-tool-options.conf
+install -D -m 0644 mkosi.preset %{buildroot}%{_prefix}/lib/mkosi-initrd/mkosi.extra/usr/lib/systemd/system-preset/95-disk-encryption-tool.preset
 
 %files
 %license LICENSE
-/usr/bin/disk-encryption-tool
-%dir /usr/lib/dracut
-%dir /usr/lib/dracut/modules.d
-/usr/lib/dracut/modules.d/95disk-encryption-tool
+%doc README.md
+%{_sbindir}/disk-encryption-tool
+%{_libexecdir}/disk-encryption-tool-initrd
+%{_unitdir}/disk-encryption-tool-initrd.service
+
+%files dracut
+%dir %{_prefix}/lib/dracut
+%dir %{_prefix}/lib/dracut/modules.d
+%{_prefix}/lib/dracut/modules.d/95disk-encryption-tool
+
+%files mkosi-initrd
+%dir %{_prefix}/lib/mkosi-initrd
+%dir %{_prefix}/lib/mkosi-initrd/mkosi.conf.d
+%{_prefix}/lib/mkosi-initrd/mkosi.conf.d/95-disk-encryption-tool.conf
+%{_prefix}/lib/mkosi-initrd/mkosi.conf.d/95-disk-encryption-tool-options.conf
+%dir %{_prefix}/lib/mkosi-initrd/mkosi.extra
+%dir %{_prefix}/lib/mkosi-initrd/mkosi.extra/usr
+%dir %{_prefix}/lib/mkosi-initrd/mkosi.extra/usr/lib
+%dir %{_prefix}/lib/mkosi-initrd/mkosi.extra/usr/lib/systemd
+%dir %{_prefix}/lib/mkosi-initrd/mkosi.extra/usr/lib/systemd/system-preset
+%{_prefix}/lib/mkosi-initrd/mkosi.extra/usr/lib/systemd/system-preset/95-disk-encryption-tool.preset
 
 %changelog

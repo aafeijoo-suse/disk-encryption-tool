@@ -95,8 +95,8 @@ warn()
 
 isdigits()
 {
-       local v="${1:?}"
-       [ -z "${v//[0-9]*/}" ]
+	local v="${1:?}"
+	[ -z "${v//[0-9]*/}" ]
 }
 
 settle_umount_events()
@@ -166,16 +166,16 @@ getopttmp=$(getopt -o hv --long help,verbose,key:,keyring:,options:,root: -n "${
 eval set -- "$getopttmp"
 
 while true ; do
-        case "$1" in
-                -h|--help) helpandquit ;;
+	case "$1" in
+		-h|--help) helpandquit ;;
 		-v|--verbose) verbose=$((++verbose)); shift ;;
 		--key) password="$2"; is_generated=; shift 2 ;;
 		--keyring) keyring="$2"; shift 2 ;;
 		--options) crypttab_options="$2"; shift 2 ;;
 		--root) root_mp="$2"; is_rootfs=; shift 2 ;;
-                --) shift ; break ;;
-                *) echo "Internal error!" ; exit 1 ;;
-        esac
+		--) shift ; break ;;
+		*) echo "Internal error!" ; exit 1 ;;
+	esac
 done
 
 [ -z "$1" ] && [ -e /etc/initrd-release ] && set -- /sysroot cr_root
