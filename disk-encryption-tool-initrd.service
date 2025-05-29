@@ -22,11 +22,14 @@ Conflicts=dracut-emergency.service emergency.service emergency.target
 OnFailure=emergency.target
 OnFailureJobMode=isolate
 
+ConditionPathExists=/etc/initrd-release
+
 [Service]
 Type=oneshot
 KeyringMode=shared
-ExecStart=/usr/bin/disk-encryption-tool-dracut
+ExecStart=/usr/libexec/disk-encryption-tool-initrd
 ImportCredential=disk-encryption-tool-dracut.*
+ImportCredential=disk-encryption-tool-initrd.*
 
 [Install]
 RequiredBy=firstboot.target

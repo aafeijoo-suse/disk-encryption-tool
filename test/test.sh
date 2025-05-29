@@ -46,10 +46,14 @@ fi
 # Prepare the temporary dir: Install disk-encryption-tool and copy resources.
 testdir="$(dirname "$0")"
 # TODO: Use a Makefile for this and in the .spec file.
+mkdir -p "${tmpdir}/install/usr/sbin"
+cp "${testdir}/../disk-encryption-tool" "${tmpdir}/install/usr/sbin/disk-encryption-tool"
+mkdir -p "${tmpdir}/install/usr/libexec"
+cp "${testdir}/../disk-encryption-tool-initrd" "${tmpdir}/install/usr/libexec/disk-encryption-tool-initrd"
+mkdir -p "${tmpdir}/install/usr/lib/systemd/system"
+cp "${testdir}/../disk-encryption-tool-initrd.service" "${tmpdir}/install/usr/lib/systemd/system/disk-encryption-tool-initrd.service"
 mkdir -p "${tmpdir}/install/usr/lib/dracut/modules.d/95disk-encryption-tool"
-for i in disk-encryption-tool{,-dracut,-dracut.service} module-setup.sh; do
-	cp "${testdir}/../${i}" "${tmpdir}/install/usr/lib/dracut/modules.d/95disk-encryption-tool/${i}"
-done
+cp "${testdir}/../module-setup.sh" "${tmpdir}/install/usr/lib/dracut/modules.d/95disk-encryption-tool/module-setup.sh"
 cp "${testdir}/"{testscript,config.ign} "${tmpdir}"
 cd "$tmpdir"
 
